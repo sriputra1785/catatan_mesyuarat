@@ -5,6 +5,8 @@ import {
   testSupabaseConnection,
   GENERATE_SUPABASE_SQL_SCRIPT
 } from '../services/supabase';
+import { purgeAllMockData, getStoredMeetings, saveMeeting } from '../services/storage';
+import { showSuccessToast, showDeleteConfirm } from '../utils/alerts';
 import {
   Database,
   ShieldCheck,
@@ -16,17 +18,21 @@ import {
   FileCode,
   Sparkles,
   Server,
+  RefreshCw,
+  Trash2,
   X
 } from 'lucide-react';
 
 interface SupabaseConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onDataReset?: () => void;
 }
 
 export const SupabaseConfigModal: React.FC<SupabaseConfigModalProps> = ({
   isOpen,
   onClose,
+  onDataReset,
 }) => {
   const [config, setConfig] = useState(getSupabaseConfig());
   const [testing, setTesting] = useState(false);
@@ -34,6 +40,7 @@ export const SupabaseConfigModal: React.FC<SupabaseConfigModalProps> = ({
   const [activeTab, setActiveTab] = useState<'config' | 'sql' | 'github' | 'seo'>('config');
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedWorkflow, setCopiedWorkflow] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -51,6 +58,23 @@ export const SupabaseConfigModal: React.FC<SupabaseConfigModalProps> = ({
         ...config,
         isConnected: true
       });
+      showSuccessToast('เชื่อมต่อสำเร็จ', 'บันทึกการตั้งค่า Supabase เรียบร้อยแล้ว');
+    }
+  };
+
+  const handleResetAllMockData = async () => {
+    const confirmed = await showDeleteConfirm('ข้อมูลจำลองทั้งหมด เพื่อรีเซ็ตเป็นระบบว่างพร้อมบันทึกจริง');
+    if (confirmed) {
+      setIsResetting(true);
+      purgeAllMockData();
+      showSuccessToast('ล้างข้อมูลสำเร็จ', 'ข้อมูลจำลองทั้งหมดถูกนำออกแล้ว ระบบพร้อมสำหรับการบันทึกจริง');
+      setIsResetting(false);
+      if (onDataReset) {
+        onDataReset();
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
     }
   };
 
@@ -85,11 +109,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Build project with Vite
         env:
@@ -265,10 +288,35 @@ jobs:
                     disabled={testing}
                     className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50"
                   >
-                    {testing ? 'Sedang menguji sambungan...' : 'Uji & Simpan Sambungan'}
+                    {testing ? 'กำลังทดสอบการเชื่อมต่อ...' : 'ทดสอบและบันทึกการเชื่อมต่อ (Test & Save)'}
                   </button>
                 </div>
               </form>
+
+              {/* Data Management & Mock Purge Box */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 space-y-3 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                      จัดการข้อมูลและการล้างข้อมูลจำลอง (Clear Mock Data)
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      ล้างข้อมูลการประชุมและคณะกรรมการจำลองทั้งหมด เพื่อให้เหลือข้อมูลจริงที่เป็นค่าว่าง พร้อมสำหรับการบันทึกจริง
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleResetAllMockData}
+                    disabled={isResetting}
+                    className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isResetting ? 'กำลังล้างข้อมูล...' : 'ล้างข้อมูลจำลองทั้งหมด (Reset to Blank)'}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
