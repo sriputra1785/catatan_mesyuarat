@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 
 interface HeaderProps {
-  currentTab: 'dashboard' | 'meetings' | 'committees' | 'supabase';
-  onSelectTab: (tab: 'dashboard' | 'meetings' | 'committees' | 'supabase') => void;
+  currentTab: 'dashboard' | 'meetings' | 'committees' | 'palads' | 'supabase';
+  onSelectTab: (tab: 'dashboard' | 'meetings' | 'committees' | 'palads' | 'supabase') => void;
   onNewMeeting: () => void;
   onOpenSupabaseConfig: () => void;
 }
@@ -205,9 +205,10 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <FileText className="w-4 h-4" />
-            {currentUser.role === 'tambon_admin' 
-              ? `Rekod Mesyuarat Mukim ${currentUser.tambonName} & Eksport PDF/Excel`
-              : 'Senarai Rekod Mesyuarat & Eksport PDF/Excel'}
+            {currentUser.role === 'tambon_admin' && `บันทึกการประชุมตำบล ${currentUser.tambonName} (ระดับตำบล)`}
+            {currentUser.role === 'district_admin' && `บันทึกการประชุมระดับอำเภอ & ตำบล (${currentUser.districtName})`}
+            {currentUser.role === 'province_admin' && `บันทึกการประชุมระดับจังหวัด & ภาพรวม (${currentUser.provinceName})`}
+            {currentUser.role === 'central_admin' && 'บันทึกการประชุมราชการ (ทุกระดับ)'}
           </button>
 
           <button
@@ -219,8 +220,22 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            Jawatankuasa Kuorum Tetap
+            รายชื่อคณะกรรมการ / องค์ประชุม
           </button>
+
+          {currentUser.role === 'central_admin' && (
+            <button
+              onClick={() => onSelectTab('palads')}
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                currentTab === 'palads'
+                  ? 'bg-blue-50 text-blue-700 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Users className="w-4 h-4 text-blue-600" />
+              จัดการเจ้าหน้าที่ (ปลัดตำบล / เลขาอำเภอ / เลขาจังหวัด)
+            </button>
+          )}
 
           {currentUser.role !== 'tambon_admin' && (
             <button
@@ -231,8 +246,8 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <Database className="w-4 h-4" />
-              Tetapan Supabase & GitHub Pages
+              <Database className="w-4 h-4 text-blue-600" />
+              ตั้งค่า Supabase API & Cloud Database
             </button>
           )}
         </div>
