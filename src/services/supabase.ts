@@ -91,29 +91,11 @@ export const testSupabaseConnection = async (url: string, key: string): Promise<
  */
 export const GENERATE_SUPABASE_SQL_SCRIPT = `-- ==============================================================================
 -- Sistem Pengurusan & Minit Mesyuarat Rasmi (e-Mesyuarat Zone)
--- Skema PostgreSQL / Supabase & Dasar Keselamatan Peringkat Baris (RLS)
--- Kawalan Akses Mengikut Hierarki: Mukim -> Daerah -> Negeri / Pusat
+-- Skrip Penciptaan Pangkalan Data & Kolar Lengkap untuk Supabase PostgreSQL
+-- Cipta semua Jadual, Kolum, Indeks, Data Asas, dan Hak Akses RLS dalam 1 Klik
 -- ==============================================================================
 
--- 1. Jadual profil pengguna sistem dan peranan (Users & Profiles)
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-  full_name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  role TEXT NOT NULL CHECK (role IN ('tambon_admin', 'district_admin', 'province_admin', 'central_admin')),
-  role_title TEXT NOT NULL,
-  province_id TEXT NOT NULL,
-  province_name TEXT NOT NULL,
-  district_id TEXT,
-  district_name TEXT,
-  tambon_id TEXT,
-  tambon_name TEXT,
-  department TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
-  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
-);
-
--- 2. Jadual kategori mesyuarat (Meeting Categories)
+-- 1. Jadual Kategori Mesyuarat (Meeting Categories)
 CREATE TABLE IF NOT EXISTS public.meeting_categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -122,41 +104,61 @@ CREATE TABLE IF NOT EXISTS public.meeting_categories (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- 3. Jadual data utama mesyuarat (Meetings)
+-- 2. Jadual Utama Rekod Mesyuarat (Meetings)
+-- Menyokong semua medan borang, kehadiran kuorum, dan senarai agenda
 CREATE TABLE IF NOT EXISTS public.meetings (
   id TEXT PRIMARY KEY,
-  meeting_number TEXT NOT NULL, -- cth: 1/2026
-  title TEXT NOT NULL,
-  category_id TEXT REFERENCES public.meeting_categories(id),
-  category_name TEXT NOT NULL,
-  meeting_date DATE NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  venue TEXT NOT NULL,
-  province_id TEXT NOT NULL,
-  province_name TEXT NOT NULL,
-  district_id TEXT NOT NULL,
-  district_name TEXT NOT NULL,
-  tambon_id TEXT NOT NULL,
-  tambon_name TEXT NOT NULL,
-  organizer TEXT NOT NULL,
-  total_eligible INT NOT NULL DEFAULT 0,
-  required_quorum INT NOT NULL DEFAULT 0,
-  is_quorum_met BOOLEAN NOT NULL DEFAULT FALSE,
-  chairman_name TEXT NOT NULL,
-  chairman_position TEXT NOT NULL,
-  secretary_name TEXT NOT NULL,
-  secretary_position TEXT NOT NULL,
-  checker_name TEXT,
-  checker_position TEXT,
-  status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('draft', 'completed', 'published')),
-  created_by_id TEXT NOT NULL,
-  created_by_name TEXT NOT NULL,
+  meeting_number TEXT NOT NULL,               -- Bilangan Mesyuarat (cth: 1/2026)
+  title TEXT NOT NULL,                        -- Tajuk Mesyuarat
+  meeting_level TEXT DEFAULT 'tambon',        -- ระดับการประชุม (tambon: ตำบล, district: อำเภอ, province: จังหวัด)
+  category_id TEXT REFERENCES public.meeting_categories(id) ON DELETE SET NULL,
+  category_name TEXT NOT NULL,                -- Nama Kategori Mesyuarat
+  meeting_date DATE NOT NULL,                 -- Tarikh Mesyuarat (YYYY-MM-DD)
+  start_time TIME NOT NULL,                   -- Masa Mula (HH:mm)
+  end_time TIME NOT NULL,                     -- Masa Tamat (HH:mm)
+  venue TEXT NOT NULL,                        -- Tempat / Bilik Mesyuarat
+  province_id TEXT NOT NULL,                  -- Kod / ID Negeri
+  province_name TEXT NOT NULL,                -- Nama Negeri
+  district_id TEXT NOT NULL,                  -- Kod / ID Daerah
+  district_name TEXT NOT NULL,                -- Nama Daerah
+  tambon_id TEXT NOT NULL,                    -- Kod / ID Mukim
+  tambon_name TEXT NOT NULL,                  -- Nama Mukim
+  organizer TEXT NOT NULL,                    -- Penganjur (cth: Pejabat Pentadbiran Mukim)
+  total_eligible INT NOT NULL DEFAULT 0,      -- Jumlah Ahli Kuorum Layak
+  required_quorum INT NOT NULL DEFAULT 0,     -- Jumlah Minimum Kuorum Sah
+  is_quorum_met BOOLEAN NOT NULL DEFAULT FALSE, -- Cukup Kuorum atau Tidak
+  attendees JSONB DEFAULT '[]'::jsonb,        -- Senarai Ahli Kehadiran & Status (JSON)
+  agendas JSONB DEFAULT '[]'::jsonb,          -- Senarai Agenda & Keputusan (JSON)
+  other_participants JSONB DEFAULT '[]'::jsonb, -- Peserta Jemputan Lain (JSON)
+  chairman_name TEXT NOT NULL,                -- Nama Pengerusi Mesyuarat
+  chairman_position TEXT NOT NULL,            -- Jawatan Pengerusi
+  secretary_name TEXT NOT NULL,               -- Nama Setiausaha / Pencatat
+  secretary_position TEXT NOT NULL,           -- Jawatan Setiausaha
+  checker_name TEXT,                          -- Nama Pemeriksa Minit
+  checker_position TEXT,                      -- Jawatan Pemeriksa
+  status TEXT NOT NULL DEFAULT 'completed',   -- Status (draft, completed, published)
+  created_by_id TEXT NOT NULL,                -- ID Pengguna Pembuat
+  created_by_name TEXT NOT NULL,              -- Nama Pengguna Pembuat
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- 4. Jadual ahli kuorum dan kehadiran mesyuarat (Meeting Attendees)
+-- 3. Jadual Ahli Jawatankuasa Kuorum Tetap (Committee Members)
+CREATE TABLE IF NOT EXISTS public.committee_members (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,                        -- Gelaran (Tuan, Puan, Encik, dsb.)
+  first_name TEXT NOT NULL,                   -- Nama Pertama
+  last_name TEXT NOT NULL,                    -- Nama Akhir
+  position TEXT NOT NULL,                     -- Jawatan
+  role_in_meeting TEXT NOT NULL,              -- Peranan dalam Mesyuarat (chairman, secretary, member, dll.)
+  organization TEXT NOT NULL,                 -- Organisasi / Agensi
+  phone TEXT,                                 -- Nombor Telefon
+  is_permanent BOOLEAN DEFAULT TRUE,          -- Ahli Tetap atau Tidak
+  tambon_id TEXT,                             -- ID Mukim yang Diwakili
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- 4. Jadual Terperinci Ahli Kehadiran Mesyuarat (Meeting Attendees)
 CREATE TABLE IF NOT EXISTS public.meeting_attendees (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   meeting_id TEXT REFERENCES public.meetings(id) ON DELETE CASCADE,
@@ -174,11 +176,11 @@ CREATE TABLE IF NOT EXISTS public.meeting_attendees (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- 5. Jadual agenda mesyuarat dan keputusan/ketetapan (Meeting Agendas)
+-- 5. Jadual Terperinci Agenda & Ketetapan (Meeting Agendas)
 CREATE TABLE IF NOT EXISTS public.meeting_agendas (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   meeting_id TEXT REFERENCES public.meetings(id) ON DELETE CASCADE,
-  agenda_number TEXT NOT NULL, -- cth: 1, 2, 3.1
+  agenda_number TEXT NOT NULL,
   title TEXT NOT NULL,
   details TEXT,
   resolution TEXT,
@@ -186,7 +188,25 @@ CREATE TABLE IF NOT EXISTS public.meeting_agendas (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Indeks (Indexes) untuk mempercepatkan carian data
+-- 6. Jadual Profil Pengguna Sistem (User Profiles)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL CHECK (role IN ('tambon_admin', 'district_admin', 'province_admin', 'central_admin')),
+  role_title TEXT NOT NULL,
+  province_id TEXT NOT NULL,
+  province_name TEXT NOT NULL,
+  district_id TEXT,
+  district_name TEXT,
+  tambon_id TEXT,
+  tambon_name TEXT,
+  department TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- Indeks (Indexes) untuk Kelajuan Carian Pantas
 CREATE INDEX IF NOT EXISTS idx_meetings_tambon ON public.meetings(tambon_id);
 CREATE INDEX IF NOT EXISTS idx_meetings_district ON public.meetings(district_id);
 CREATE INDEX IF NOT EXISTS idx_meetings_province ON public.meetings(province_id);
@@ -194,41 +214,51 @@ CREATE INDEX IF NOT EXISTS idx_meetings_date ON public.meetings(meeting_date);
 CREATE INDEX IF NOT EXISTS idx_attendees_meeting ON public.meeting_attendees(meeting_id);
 CREATE INDEX IF NOT EXISTS idx_agendas_meeting ON public.meeting_agendas(meeting_id);
 
+-- Data Asas Kategori Mesyuarat (Default Seed Data)
+INSERT INTO public.meeting_categories (id, name, description, badge_color) VALUES
+  ('cat-council', 'Mesyuarat Majlis Mukim / Tempatan', 'Mesyuarat Sidang Biasa dan Khas Majlis Perbandaran / Mukim', 'bg-blue-100 text-blue-800 border-blue-200'),
+  ('cat-district-heads', 'Mesyuarat Ketua Jabatan Daerah', 'Mesyuarat bulanan ketua-ketua jabatan kerajaan dan agensi peringkat daerah', 'bg-emerald-100 text-emerald-800 border-emerald-200'),
+  ('cat-village-leaders', 'Mesyuarat Penghulu & Ketua Kampung', 'Mesyuarat berkala taklimat dasar dan pemantauan keselamatan komuniti', 'bg-amber-100 text-amber-800 border-amber-200'),
+  ('cat-development', 'Mesyuarat Jawatankuasa Tindakan Pembangunan', 'Penilaian pelan tindakan pembangunan sosioekonomi dan peruntukan bajet', 'bg-purple-100 text-purple-800 border-purple-200'),
+  ('cat-disaster', 'Mesyuarat Pengurusan Bencana & Kecemasan', 'Kesiapsiagaan menghadapi bencana banjir, ribut dan kecemasan awam', 'bg-rose-100 text-rose-800 border-rose-200'),
+  ('cat-internal', 'Mesyuarat Pentadbiran & Pengurusan Dalaman', 'Penyelarasan urusan operasi dalaman pejabat dan semakan prestasi', 'bg-indigo-100 text-indigo-800 border-indigo-200')
+ON CONFLICT (id) DO NOTHING;
+
 -- ==============================================================================
--- Dasar Keselamatan Peringkat Baris (Row-Level Security: RLS) Mengikut Hierarki
+-- Keselamatan & Hak Akses (Row-Level Security: RLS)
+-- Membenarkan Frontend (Anon / Authenticated) membaca dan menyimpan data secara lancar
 -- ==============================================================================
 ALTER TABLE public.meetings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.meeting_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.committee_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.meeting_attendees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.meeting_agendas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- 1) Pentadbir Mukim (tambon_admin): Baca dan sunting hanya data mukim sendiri
--- 2) Pentadbir Daerah (district_admin): Baca dan sunting semua mukim di bawah daerah sendiri
--- 3) Pentadbir Negeri / Pusat (province_admin / central_admin): Akses gambaran penuh secara masa nyata
+-- Polisi Keselamatan untuk Capaian Penuh Melalui Kunci Awam (Anon & Authenticated)
+DROP POLICY IF EXISTS "meetings_full_access" ON public.meetings;
+CREATE POLICY "meetings_full_access" ON public.meetings FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- Polisi capaian paparan mesyuarat (SELECT Policy)
-CREATE POLICY "meetings_select_policy" ON public.meetings
-FOR SELECT TO authenticated
-USING (
-  (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('central_admin', 'province_admin')
-  OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'district_admin' AND district_id = (SELECT district_id FROM public.profiles WHERE id = auth.uid()))
-  OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'tambon_admin' AND tambon_id = (SELECT tambon_id FROM public.profiles WHERE id = auth.uid()))
-);
+DROP POLICY IF EXISTS "categories_full_access" ON public.meeting_categories;
+CREATE POLICY "categories_full_access" ON public.meeting_categories FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- Polisi perekodan mesyuarat baharu (INSERT Policy)
-CREATE POLICY "meetings_insert_policy" ON public.meetings
-FOR INSERT TO authenticated
-WITH CHECK (
-  (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('central_admin')
-  OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'district_admin' AND district_id = (SELECT district_id FROM public.profiles WHERE id = auth.uid()))
-  OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'tambon_admin' AND tambon_id = (SELECT tambon_id FROM public.profiles WHERE id = auth.uid()))
-);
+DROP POLICY IF EXISTS "committees_full_access" ON public.committee_members;
+CREATE POLICY "committees_full_access" ON public.committee_members FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- Polisi pengemaskinian mesyuarat (UPDATE Policy)
-CREATE POLICY "meetings_update_policy" ON public.meetings
-FOR UPDATE TO authenticated
-USING (
-  (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('central_admin')
-  OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'district_admin' AND district_id = (SELECT district_id FROM public.profiles WHERE id = auth.uid()))
-  OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'tambon_admin' AND tambon_id = (SELECT tambon_id FROM public.profiles WHERE id = auth.uid()))
-);
+DROP POLICY IF EXISTS "attendees_full_access" ON public.meeting_attendees;
+CREATE POLICY "attendees_full_access" ON public.meeting_attendees FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "agendas_full_access" ON public.meeting_agendas;
+CREATE POLICY "agendas_full_access" ON public.meeting_agendas FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "profiles_full_access" ON public.profiles;
+CREATE POLICY "profiles_full_access" ON public.profiles FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- Memberi Kebenaran Akses SQL kepada Peranan anon dan authenticated
+GRANT ALL ON TABLE public.meetings TO anon, authenticated;
+GRANT ALL ON TABLE public.meeting_categories TO anon, authenticated;
+GRANT ALL ON TABLE public.committee_members TO anon, authenticated;
+GRANT ALL ON TABLE public.meeting_attendees TO anon, authenticated;
+GRANT ALL ON TABLE public.meeting_agendas TO anon, authenticated;
+GRANT ALL ON TABLE public.profiles TO anon, authenticated;
 `;
