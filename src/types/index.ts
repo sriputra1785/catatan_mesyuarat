@@ -1,7 +1,11 @@
 export type UserRole = 'tambon_admin' | 'district_admin' | 'province_admin' | 'central_admin';
 
+export type MeetingLevel = 'tambon' | 'district' | 'province';
+
 export interface UserProfile {
   id: string;
+  username?: string; // cth: 'admin' atau nama pengguna untuk log masuk
+  password?: string; // kata laluan akaun
   name: string;
   email: string;
   role: UserRole;
@@ -14,6 +18,8 @@ export interface UserProfile {
   tambonName?: string;
   department: string;
   avatarUrl?: string;
+  phone?: string;
+  status?: 'active' | 'inactive';
 }
 
 export interface Province {
@@ -94,6 +100,7 @@ export interface MeetingCategory {
 
 export interface Meeting {
   id: string;
+  meetingLevel?: MeetingLevel; // 'tambon' | 'district' | 'province'
   meetingNumber: string; // Bilangan cth: '1/2026'
   title: string; // Tajuk mesyuarat cth: 'Mesyuarat Majlis Tindakan Pembangunan Mukim'
   categoryId: string;
