@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Pengurusan & Minit Mesyuarat Rasmi (e-Mesyuarat Zone)",
+  "description": "Sistem rekod minit mesyuarat rasmi, semakan kehadiran kuorum ahli jawatankuasa, papan pemuka statistik bulanan pihak pengurusan, serta eksport laporan PDF/Excel mengikut hierarki Mukim, Daerah dan Negeri.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

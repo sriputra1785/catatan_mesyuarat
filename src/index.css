@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@layer base {
+  *, ::before, ::after {
+    font-family: 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    font-family: 'Kanit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 300;
+  }
+
+  input, button, select, textarea {
+    font-family: 'Kanit', sans-serif;
+  }
+
+  .font-sarabun {
+    font-family: 'Sarabun', 'TH Sarabun New', sans-serif;
+  }
+}
+
+/* Modern SweetAlert2 Custom Styling */
+.swal2-popup {
+  font-family: 'Kanit', sans-serif !important;
+  border-radius: 1.25rem !important;
+  padding: 1.75rem !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.swal2-title {
+  font-family: 'Kanit', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+  color: #0f172a !important;
+}
+
+.swal2-html-container {
+  font-family: 'Kanit', sans-serif !important;
+  font-size: 0.9rem !important;
+  color: #475569 !important;
+  line-height: 1.6 !important;
+}
+
+.swal2-confirm {
+  font-family: 'Kanit', sans-serif !important;
+  border-radius: 0.75rem !important;
+  padding: 0.65rem 1.5rem !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2) !important;
+}
+
+.swal2-cancel {
+  font-family: 'Kanit', sans-serif !important;
+  border-radius: 0.75rem !important;
+  padding: 0.65rem 1.5rem !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 13pt;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .page-break {
+    page-break-after: always;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
