@@ -32,8 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error('Failed to load user', e);
     }
-    // Default to Tambon Clerk for instant practical demonstration
-    return DEMO_USERS[0];
+    return null;
   });
 
   const [secondsRemaining, setSecondsRemaining] = useState<number>(INACTIVITY_TIMEOUT_SECONDS);
