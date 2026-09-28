@@ -40,6 +40,7 @@ export const MeetingList: React.FC<MeetingListProps> = ({
   const { currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [levelFilter, setLevelFilter] = useState<'all' | 'tambon' | 'district' | 'province'>('all');
   const [quorumFilter, setQuorumFilter] = useState<'all' | 'met' | 'not_met'>('all');
 
   const isTambonUser = currentUser?.role === 'tambon_admin';
@@ -59,6 +60,12 @@ export const MeetingList: React.FC<MeetingListProps> = ({
         if (!matches) return false;
       }
 
+      // Meeting Level
+      if (levelFilter !== 'all') {
+        const lvl = m.meetingLevel || 'tambon';
+        if (lvl !== levelFilter) return false;
+      }
+
       // Category
       if (categoryFilter !== 'all' && m.categoryId !== categoryFilter) {
         return false;
@@ -70,7 +77,7 @@ export const MeetingList: React.FC<MeetingListProps> = ({
 
       return true;
     });
-  }, [meetings, searchTerm, categoryFilter, quorumFilter]);
+  }, [meetings, searchTerm, levelFilter, categoryFilter, quorumFilter]);
 
   const handleExportAllToExcel = () => {
     const filename = isTambonUser
@@ -149,17 +156,31 @@ export const MeetingList: React.FC<MeetingListProps> = ({
 
       {/* Filter and Search Bar */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search Input */}
-          <div className="sm:col-span-2 relative">
+          <div className="lg:col-span-2 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cari tajuk mesyuarat, bil. mesyuarat, mukim, daerah atau keputusan..."
+              placeholder="ค้นหาชื่อการประชุม, เลขที่, ตำบล, อำเภอ หรือมติที่ประชุม..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
+          </div>
+
+          {/* Meeting Level filter */}
+          <div>
+            <select
+              value={levelFilter}
+              onChange={(e) => setLevelFilter(e.target.value as any)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+            >
+              <option value="all">ทุกระดับการประชุม</option>
+              <option value="tambon">ระดับตำบล (ปลัดตำบล 1 คน 1 ตำบล)</option>
+              <option value="district">ระดับอำเภอ (เลขาอำเภอ)</option>
+              <option value="province">ระดับจังหวัด (เลขาจังหวัด)</option>
+            </select>
           </div>
 
           {/* Quorum filter */}
@@ -169,16 +190,16 @@ export const MeetingList: React.FC<MeetingListProps> = ({
               onChange={(e) => setQuorumFilter(e.target.value as any)}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="all">Semua Status Kuorum</option>
-              <option value="met">Cukup Kuorum Sahaja</option>
-              <option value="not_met">Tidak Cukup Kuorum</option>
+              <option value="all">ทุกสถานะองค์ประชุม</option>
+              <option value="met">ครบองค์ประชุมเท่านั้น</option>
+              <option value="not_met">ไม่ครบองค์ประชุม</option>
             </select>
           </div>
 
           {/* Result Counter */}
           <div className="flex items-center justify-end text-xs text-slate-500">
             <span>
-              Menemui <strong>{filteredMeetings.length}</strong> daripada {meetings.length} rekod
+              พบ <strong>{filteredMeetings.length}</strong> จาก {meetings.length} รายการ
             </span>
           </div>
         </div>
@@ -188,24 +209,56 @@ export const MeetingList: React.FC<MeetingListProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {filteredMeetings.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
-            <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-semibold text-slate-600">Tiada rekod mesyuarat dijumpai</p>
-            <p className="text-xs text-slate-400 mt-1">
-              Cuba ubah carian anda atau klik butang "Rekod Mesyuarat Baharu" di atas.
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+              <FileText className="w-8 h-8 opacity-80" />
+            </div>
+            <h3 className="text-base font-bold text-slate-700">
+              ยังไม่มีบันทึกการประชุมในระบบ (ระบบว่างพร้อมสำหรับการเริ่มบันทึกข้อมูลจริง)
+            </h3>
+            <p className="text-xs text-slate-500 max-w-lg mx-auto mt-2 leading-relaxed">
+              {currentUser?.role === 'tambon_admin' && (
+                <span>
+                  เข้าสู่ระบบในฐานะ <strong>ปลัดอำเภอประจำตำบล {currentUser.tambonName}</strong> (ดูแล 1 คน 1 ตำบล) คุณสามารถเริ่มบันทึกการประชุมของตำบลคุณได้ทันที
+                </span>
+              )}
+              {currentUser?.role === 'district_admin' && (
+                <span>
+                  เข้าสู่ระบบในฐานะ <strong>เลขาอำเภอ / ผู้รับผิดชอบระดับอำเภอ {currentUser.districtName}</strong> คุณสามารถบันทึกการประชุมระดับอำเภอ และติดตามตำบลในอำเภอ
+                </span>
+              )}
+              {currentUser?.role === 'province_admin' && (
+                <span>
+                  เข้าสู่ระบบในฐานะ <strong>เลขาระดับจังหวัด {currentUser.provinceName}</strong> คุณสามารถบันทึกการประชุมระดับจังหวัด และติดตามภาพรวมทั้งจังหวัด
+                </span>
+              )}
+              {currentUser?.role === 'central_admin' && (
+                <span>
+                  เข้าสู่ระบบในฐานะ <strong>แอดมินส่วนกลาง (Central Admin)</strong> สามารถจัดการปลัดประจำตำบล, เลขาอำเภอ, เลขาจังหวัด, บันทึกการประชุมทุกระดับ และตั้งค่า API ของ Supabase ได้อย่างสมบูรณ์
+                </span>
+              )}
             </p>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <button
+                onClick={onNewMeeting}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ เริ่มบันทึกการประชุมรายการแรก</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-100/80 text-slate-700 font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="py-3 px-4 w-28">No. Mesyuarat</th>
-                  <th className="py-3 px-4 min-w-[260px]">Tajuk Mesyuarat / Perkara</th>
-                  <th className="py-3 px-4 min-w-[150px]">Agensi / Kawasan</th>
-                  <th className="py-3 px-4 min-w-[140px]">Tarikh & Masa</th>
-                  <th className="py-3 px-4 text-center min-w-[120px]">Ahli Kuorum</th>
-                  <th className="py-3 px-4 text-center min-w-[110px]">Status Kuorum</th>
-                  <th className="py-3 px-4 text-center min-w-[180px]">Tindakan</th>
+                  <th className="py-3 px-4 w-28">เลขที่ประชุม</th>
+                  <th className="py-3 px-4 min-w-[280px]">ชื่อการประชุม / ระดับการประชุม</th>
+                  <th className="py-3 px-4 min-w-[150px]">หน่วยงาน / พื้นที่</th>
+                  <th className="py-3 px-4 min-w-[140px]">วันและเวลา</th>
+                  <th className="py-3 px-4 text-center min-w-[120px]">ผู้เข้าร่วม</th>
+                  <th className="py-3 px-4 text-center min-w-[110px]">องค์ประชุม</th>
+                  <th className="py-3 px-4 text-center min-w-[180px]">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -214,6 +267,7 @@ export const MeetingList: React.FC<MeetingListProps> = ({
                     (a) => a.status === 'present' || a.status === 'proxy'
                   ).length;
                   const canEdit = currentUser ? canUserEditMeeting(currentUser, meeting) : false;
+                  const lvl = meeting.meetingLevel || 'tambon';
 
                   return (
                     <tr
@@ -228,12 +282,27 @@ export const MeetingList: React.FC<MeetingListProps> = ({
                         <div className="font-semibold text-slate-900 leading-snug">
                           {meeting.title}
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {lvl === 'tambon' && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
+                              ระดับตำบล
+                            </span>
+                          )}
+                          {lvl === 'district' && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300 font-bold">
+                              ระดับอำเภอ
+                            </span>
+                          )}
+                          {lvl === 'province' && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300 font-bold">
+                              ระดับจังหวัด
+                            </span>
+                          )}
                           <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                             {meeting.categoryName}
                           </span>
                           <span className="text-[11px] text-slate-400">
-                            {meeting.agendas.length} Agenda
+                            {meeting.agendas.length} วาระ
                           </span>
                         </div>
                       </td>
