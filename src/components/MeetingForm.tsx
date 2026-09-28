@@ -37,6 +37,14 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
 }) => {
   const { currentUser } = useAuth();
 
+  // Meeting Level: tambon (ตำบล), district (อำเภอ), province (จังหวัด)
+  const [meetingLevel, setMeetingLevel] = useState<'tambon' | 'district' | 'province'>(() => {
+    if (initialMeeting?.meetingLevel) return initialMeeting.meetingLevel;
+    if (currentUser?.role === 'province_admin') return 'province';
+    if (currentUser?.role === 'district_admin') return 'district';
+    return 'tambon';
+  });
+
   // Location Hierarchy states (conditioned by user role)
   const [provinceId, setProvinceId] = useState(
     initialMeeting?.provinceId || currentUser?.provinceId || PROVINCES[0].id
@@ -258,6 +266,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
 
     const meetingToSave: Meeting = {
       id: initialMeeting?.id || `meet-${Date.now()}`,
+      meetingLevel,
       meetingNumber: meetingNumber.trim(),
       title: title.trim(),
       categoryId: selectedCat.id,
@@ -327,15 +336,112 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
         </div>
       </div>
 
-      {/* Jurisdiction notice */}
-      {isTambonLocked && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs p-3.5 rounded-xl flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>
-            <strong>Bidang Kuasa Mukim:</strong> Anda sedang merekod data di bawah tanggungjawab <strong>Mukim {currentUser?.tambonName}, Daerah {currentUser?.districtName}</strong> (Akses terhad untuk mukim sendiri).
-          </span>
+      {/* Meeting Level Selection & Jurisdiction Banner */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              ระดับการประชุมที่บันทึก (Meeting Level) <span className="text-rose-500">*</span>
+            </label>
+            <p className="text-xs text-slate-500 mt-0.5">
+              เลือกระดับการประชุมตามสิทธิ์ความรับผิดชอบ (ระดับตำบล / ระดับอำเภอ / ระดับจังหวัด)
+            </p>
+          </div>
+
+          {/* Level Switcher (Central Admin can choose all; others locked or preset) */}
+          {currentUser?.role === 'central_admin' ? (
+            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setMeetingLevel('tambon')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  meetingLevel === 'tambon'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                ระดับตำบล (Tambon)
+              </button>
+              <button
+                type="button"
+                onClick={() => setMeetingLevel('district')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  meetingLevel === 'district'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                ระดับอำเภอ (District)
+              </button>
+              <button
+                type="button"
+                onClick={() => setMeetingLevel('province')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  meetingLevel === 'province'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                ระดับจังหวัด (Province)
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {meetingLevel === 'tambon' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                  ระดับตำบล (สำหรับปลัดอำเภอประจำตำบล - 1 คน 1 ตำบล)
+                </span>
+              )}
+              {meetingLevel === 'district' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-800 border border-blue-300 rounded-xl text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                  ระดับอำเภอ (สำหรับเลขาอำเภอ / ผู้รับผิดชอบระดับอำเภอ)
+                </span>
+              )}
+              {meetingLevel === 'province' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-800 border border-purple-300 rounded-xl text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
+                  ระดับจังหวัด (สำหรับเลขาระดับจังหวัด)
+                </span>
+              )}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Level Description Info */}
+        <div className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 ${
+          meetingLevel === 'tambon'
+            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+            : meetingLevel === 'district'
+            ? 'bg-blue-50/70 border-blue-200 text-blue-900'
+            : 'bg-purple-50/70 border-purple-200 text-purple-900'
+        }`}>
+          <div className="shrink-0 font-bold">
+            {meetingLevel === 'tambon' && '📌 ระดับตำบล:'}
+            {meetingLevel === 'district' && '📌 ระดับอำเภอ:'}
+            {meetingLevel === 'province' && '📌 ระดับจังหวัด:'}
+          </div>
+          <div>
+            {meetingLevel === 'tambon' && (
+              <span>
+                บันทึกการประชุมสำหรับปลัดประจำตำบล โดยปลัด 1 คนดูแล 1 ตำบล <strong>(ตำบล {currentUser?.tambonName || 'ที่กำหนด'})</strong> ข้อมูลจะถูกเก็บและแสดงผลเฉพาะตำบลนี้
+              </span>
+            )}
+            {meetingLevel === 'district' && (
+              <span>
+                บันทึกการประชุมสำหรับอำเภอ โดยเลขาอำเภอ <strong>(อำเภอ {currentUser?.districtName || 'ที่กำหนด'})</strong> สำหรับการประชุมหัวหน้าส่วนราชการอำเภอ / กำนันผู้ใหญ่บ้าน
+              </span>
+            )}
+            {meetingLevel === 'province' && (
+              <span>
+                บันทึกการประชุมระดับจังหวัด โดยเลขาระดับจังหวัด <strong>(จังหวัด {currentUser?.provinceName || 'ที่กำหนด'})</strong> สำหรับการประชุมกรมการจังหวัด / หัวหน้าส่วนราชการประจำจังหวัด
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Section 1: Basic Meeting Information & Category */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
