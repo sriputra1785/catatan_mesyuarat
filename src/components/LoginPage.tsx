@@ -9,23 +9,29 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onOpenSupabaseConfig }) => {
   const { login, loginWithCredentials } = useAuth();
-  const [emailInput, setEmailInput] = useState('');
+  const [identifierInput, setIdentifierInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const logoutNotice = sessionStorage.getItem('emeeting_logout_notice');
 
   const handleCustomLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailInput) {
-      setErrorMessage('Sila masukkan emel rasmi atau nama pengguna.');
+    if (!identifierInput) {
+      setErrorMessage('กรุณากรอกชื่อผู้ใช้งาน (Username) หรืออีเมลราชการ');
       return;
     }
-    const success = await loginWithCredentials(emailInput);
+    const success = await loginWithCredentials(identifierInput, passwordInput);
     if (!success) {
-      setErrorMessage('Akaun tidak dijumpai atau kata laluan tidak sah (Anda boleh memilih log masuk pantas mengikut peranan di bawah).');
+      setErrorMessage('ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง (สำหรับแอดมินส่วนกลางใช้ user: admin / password: 1785)');
     } else {
       sessionStorage.removeItem('emeeting_logout_notice');
     }
+  };
+
+  const handleFillAdmin = () => {
+    setIdentifierInput('admin');
+    setPasswordInput('1785');
+    setErrorMessage('');
   };
 
   return (
@@ -76,40 +82,63 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenSupabaseConfig }) =>
               <UserCheck className="w-5 h-5 text-blue-400" />
               Log Masuk Akaun Pengguna
             </h2>
-            <p className="text-xs text-slate-400 mb-6">
-              Masukkan emel rasmi untuk mengakses data mengikut bidang kuasa
+            <p className="text-xs text-slate-400 mb-4">
+              กรอกข้อมูลเพื่อลงชื่อเข้าใช้งานระบบตามระดับสิทธิ์ที่ได้รับมอบหมาย
             </p>
+
+            {/* Quick Helper for Central Admin login */}
+            <div className="bg-gradient-to-r from-blue-950/80 to-slate-900 border border-blue-500/40 rounded-xl p-3 mb-5 text-xs shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="font-semibold text-blue-200 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                    บัญชีแอดมินส่วนกลาง (Central Admin)
+                  </div>
+                  <div className="font-mono text-[11px] text-slate-300 mt-1">
+                    user: <b className="text-white font-bold bg-slate-800 px-1 rounded">admin</b> &nbsp; pass: <b className="text-white font-bold bg-slate-800 px-1 rounded">1785</b>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleFillAdmin}
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+                >
+                  กรอกอัตโนมัติ
+                </button>
+              </div>
+            </div>
 
             <form onSubmit={handleCustomLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Emel / ID Pengguna Rasmi
+                  ชื่อผู้ใช้งาน หรือ อีเมล (Username / Email)
                 </label>
                 <input
-                  type="email"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="penghulu.nongsaharai@gov.my"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  value={identifierInput}
+                  onChange={(e) => setIdentifierInput(e.target.value)}
+                  placeholder="admin หรือ ชื่อผู้ใช้ปลัด เช่น nongsaharai"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Kata Laluan Keselamatan
+                  รหัสผ่าน (Password)
                 </label>
                 <input
                   type="password"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="1785 หรือ รหัสผ่านของคุณ"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                 />
               </div>
 
               {errorMessage && (
-                <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-lg">
-                  {errorMessage}
+                <div className="text-xs text-rose-300 bg-rose-500/15 border border-rose-500/30 p-2.5 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{errorMessage}</span>
                 </div>
               )}
 
@@ -117,7 +146,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenSupabaseConfig }) =>
                 type="submit"
                 className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer"
               >
-                Log Masuk
+                เข้าสู่ระบบ (Log Masuk)
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
