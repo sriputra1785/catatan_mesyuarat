@@ -130,6 +130,16 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Direct Logout Button */}
+            <button
+              onClick={() => logout()}
+              title="Log Keluar dari Sistem"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/60 hover:bg-rose-900 border border-rose-700/60 text-rose-300 text-xs cursor-pointer transition-colors"
+            >
+              <LogOut className="w-3 h-3" />
+              <span className="hidden sm:inline">Log Keluar</span>
+            </button>
           </div>
         </div>
       </div>
